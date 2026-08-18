@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+/* Dark mode is a manual toggle (ThemeToggle, persisted to localStorage), not
+   the OS preference - so the `dark:` variant must key off a `.dark` class on
+   <html>, not `prefers-color-scheme`. Without this override Tailwind v4's
+   default `dark:` variant follows the media query, which is what silently
+   brought the browser/OS's preference back in regardless of the toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a1a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* Dark palette anchored to the brand primary's hue (~156deg, see
+   tailwind.config.ts) at low saturation/lightness, instead of the default-
+   scaffold blue-black (~216-220deg) this previously shipped with - so dark
+   mode reads as a desaturated companion to the actual brand color rather
+   than an unrelated blue theme. */
+.dark {
+  --background: #0b110f;
+  --foreground: #eef1f0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Hero radar visual (components/home/RadarHeroVisual.tsx): the sweep's
+   conic-gradient trail rotates continuously on this keyframe. Blips are
+   plain, statically-visible markers (Phase 77) - no per-blip animation or
+   timing tied to the sweep's position, so there's nothing else to keyframe
+   here. Plain CSS (not framer-motion) since a rotating gradient is cheap to
+   run this way with no per-frame JS for a purely decorative loop.
+
+   The gradient itself is defined here (not as an inline style, unlike the
+   rest of the component) so dark mode can get its own, dimmer stops - the
+   same green reads noticeably louder against the near-black dark
+   background than against white, so an alpha tuned for light mode
+   overshoots in dark mode if left unsplit. */
+.radar-hero-sweep {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    rgba(0, 146, 88, 0.06) 300deg,
+    rgba(0, 146, 88, 0.16) 345deg,
+    rgba(71, 177, 135, 0.3) 358deg,
+    rgba(215, 245, 230, 0.22) 360deg
+  );
+}
+
+.dark .radar-hero-sweep {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    rgba(0, 146, 88, 0.05) 300deg,
+    rgba(0, 146, 88, 0.11) 345deg,
+    rgba(71, 177, 135, 0.2) 358deg,
+    rgba(160, 220, 195, 0.14) 360deg
+  );
+}
+
+@keyframes radar-hero-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-hero-sweep {
+    animation: none !important;
+  }
+}

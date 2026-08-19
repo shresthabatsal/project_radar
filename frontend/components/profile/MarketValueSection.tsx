@@ -27,6 +27,18 @@ const METHOD_BADGE: Record<string, string> = {
 const GAP_COLOR = (pct: number) =>
   pct > 0 ? "text-green-600 dark:text-green-400" : pct < 0 ? "text-red-600 dark:text-red-400" : "text-foreground/50";
 
+const CONFIDENCE_BADGE: Record<string, string> = {
+  high: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+  medium: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  low: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+};
+
+const CONFIDENCE_LABEL: Record<string, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
@@ -95,9 +107,20 @@ export function MarketValueSection({ id }: { id: string }) {
       {data.ml_model_trained ? (
         <div className="mt-6 grid grid-cols-1 gap-6 border-t border-primary-100 pt-6 dark:border-primary-900 lg:grid-cols-2">
           <div>
-            <span className="font-sans text-xs font-medium uppercase tracking-wide text-foreground/50">
-              Model Valuation
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-sans text-xs font-medium uppercase tracking-wide text-foreground/50">
+                Model Valuation
+              </span>
+              {data.ml_prediction_confidence && (
+                <span
+                  className={`rounded-full px-2 py-0.5 font-sans text-[11px] font-medium ${
+                    CONFIDENCE_BADGE[data.ml_prediction_confidence] ?? "bg-foreground/10 text-foreground/60"
+                  }`}
+                >
+                  {CONFIDENCE_LABEL[data.ml_prediction_confidence] ?? data.ml_prediction_confidence} confidence
+                </span>
+              )}
+            </div>
             {data.ml_prediction != null ? (
               <CountUp
                 value={data.ml_prediction}
@@ -111,8 +134,8 @@ export function MarketValueSection({ id }: { id: string }) {
               What the model thinks this player is worth, from performance and bio features alone -
               independent of the observed market value.
             </p>
-            {data.ml_prediction_confidence === "low" && data.ml_prediction_confidence_note && (
-              <p className="mt-2 font-sans text-xs text-amber-600 dark:text-amber-400">
+            {data.ml_prediction_confidence_note && (
+              <p className="mt-2 font-sans text-xs text-foreground/50">
                 {data.ml_prediction_confidence_note}
               </p>
             )}

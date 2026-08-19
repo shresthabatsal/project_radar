@@ -143,6 +143,16 @@ function MarketValueBody({ status }: { status: ModelStatus }) {
 
 // ---- Sell-High Risk -----------------------------------------------------
 
+function ConfusionMatrixCell({ cm }: { cm: unknown }) {
+  const rec = asRecord(cm);
+  if (Object.keys(rec).length === 0) return <>—</>;
+  return (
+    <>
+      TN {fmtInt(rec.tn)} · FP {fmtInt(rec.fp)} · FN {fmtInt(rec.fn)} · TP {fmtInt(rec.tp)}
+    </>
+  );
+}
+
 function SellHighRiskBody({ status }: { status: ModelStatus }) {
   const meta = asRecord(status.meta);
   const temporal = asRecord(meta.temporal_holdout);
@@ -185,7 +195,9 @@ function SellHighRiskBody({ status }: { status: ModelStatus }) {
               <th className={thClass}>F1</th>
               <th className={thClass}>Precision</th>
               <th className={thClass}>Recall</th>
+              <th className={thClass}>FPR</th>
               <th className={thClass}>n</th>
+              <th className={thClass}>Confusion matrix (TN/FP/FN/TP)</th>
             </tr>
           </thead>
           <tbody>
@@ -195,7 +207,11 @@ function SellHighRiskBody({ status }: { status: ModelStatus }) {
               <td className={tdClass}>{fmtNum(temporal.f1, 3)}</td>
               <td className={tdClass}>{fmtNum(temporal.precision, 3)}</td>
               <td className={tdClass}>{fmtNum(temporal.recall, 3)}</td>
+              <td className={tdClass}>{fmtNum(temporal.false_positive_rate, 3)}</td>
               <td className={tdClass}>{fmtInt(temporal.n)}</td>
+              <td className={tdClass}>
+                <ConfusionMatrixCell cm={temporal.confusion_matrix} />
+              </td>
             </tr>
             <tr>
               <td className={tdClass}>GroupKFold(player)</td>
@@ -203,7 +219,11 @@ function SellHighRiskBody({ status }: { status: ModelStatus }) {
               <td className={tdClass}>{fmtNum(gkf.f1, 3)}</td>
               <td className={tdClass}>{fmtNum(gkf.precision, 3)}</td>
               <td className={tdClass}>{fmtNum(gkf.recall, 3)}</td>
+              <td className={tdClass}>{fmtNum(gkf.false_positive_rate, 3)}</td>
               <td className={tdClass}>{fmtInt(gkf.n)}</td>
+              <td className={tdClass}>
+                <ConfusionMatrixCell cm={gkf.confusion_matrix} />
+              </td>
             </tr>
             <tr>
               <td className={tdClass}>Baseline: logistic regression (3-feature)</td>
@@ -211,13 +231,16 @@ function SellHighRiskBody({ status }: { status: ModelStatus }) {
               <td className={tdClass}>{fmtNum(baselineLog.f1, 3)}</td>
               <td className={tdClass}>{fmtNum(baselineLog.precision, 3)}</td>
               <td className={tdClass}>{fmtNum(baselineLog.recall, 3)}</td>
+              <td className={tdClass}>{fmtNum(baselineLog.false_positive_rate, 3)}</td>
               <td className={tdClass}>{fmtInt(baselineLog.n)}</td>
+              <td className={tdClass}>—</td>
             </tr>
             <tr>
               <td className={tdClass}>Baseline: majority class</td>
-              <td className={tdClass} colSpan={4}>
+              <td className={tdClass} colSpan={5}>
                 accuracy {fmtNum(baselineMaj.accuracy, 3)} - the floor any model must clear
               </td>
+              <td className={tdClass}>—</td>
               <td className={tdClass}>—</td>
             </tr>
           </tbody>
@@ -232,6 +255,58 @@ function SellHighRiskBody({ status }: { status: ModelStatus }) {
 }
 
 // ---- Style Clustering -----------------------------------------------------
+
+function SilhouetteSweep({ silhouetteByK, chosenK }: { silhouetteByK: Rec; chosenK: number | null }) {
+  const entries = Object.entries(silhouetteByK)
+    .map(([k, v]) => ({ k: Number(k), score: num(v) }))
+    .filter((e): e is { k: number; score: number } => e.score != null)
+    .sort((a, b) => a.k - b.k);
+  if (entries.length === 0) return null;
+
+  const max = Math.max(...entries.map((e) => e.score), 0.0001);
+  const argmax = entries.reduce((best, e) => (e.score > best.score ? e : best), entries[0]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {entries.map((e, i) => {
+        const isChosen = e.k === chosenK;
+        const isOptimal = e.k === argmax.k;
+        return (
+          <div key={e.k} className="flex items-center gap-3">
+            <span
+              className={`w-10 shrink-0 font-sans text-xs ${
+                isChosen ? "font-semibold text-primary-700 dark:text-primary-400" : "text-foreground/60"
+              }`}
+            >
+              K={e.k}
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-primary-50 dark:bg-primary-950">
+              <motion.div
+                className={`h-full rounded-full ${isChosen ? "bg-primary-500" : "bg-foreground/25"}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${(e.score / max) * 100}%` }}
+                transition={{ duration: 0.6, delay: i * 0.06, ease: "easeOut" }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right font-sans text-xs text-foreground/50">
+              {e.score.toFixed(4)}
+            </span>
+            {isChosen && (
+              <span className="shrink-0 rounded-full bg-primary-100 px-1.5 py-0.5 font-sans text-[10px] font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                chosen
+              </span>
+            )}
+            {isOptimal && !isChosen && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                optimal
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function StyleClusteringBody({ status }: { status: ModelStatus }) {
   const metaByPos = asRecord(status.meta);
@@ -300,6 +375,18 @@ function StyleClusteringBody({ status }: { status: ModelStatus }) {
                     </dd>
                   </div>
                 </dl>
+
+                {Object.keys(asRecord(posMeta.silhouette_by_k)).length > 0 && (
+                  <div className="mt-3">
+                    <h4 className={labelClass}>Silhouette by K (chosen vs. optimal)</h4>
+                    <div className="mt-1.5">
+                      <SilhouetteSweep
+                        silhouetteByK={asRecord(posMeta.silhouette_by_k)}
+                        chosenK={num(posMeta.k)}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {clusters.length > 0 && (
                   <div className="mt-3 overflow-x-auto">

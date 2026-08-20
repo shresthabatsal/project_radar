@@ -213,12 +213,14 @@ def build_training_rows(seasons=None, min_minutes=config.SELL_HIGH_MIN_MINUTES,
 
 
 def _fit_expected_next_score(train_df, fit_mask):
-    """Isotonic regression of next_output_score on this-season output_score,
-    fit only on the "stayed" TRAINING-season population, never the temporal holdout."""
+    """Isotonic regression of next_output_score on this-season output_score."""
     from sklearn.isotonic import IsotonicRegression
 
+    # Keep only training rows for players who did not collapse
     fit_rows = train_df[fit_mask & ~train_df['collapsed']]
+    # Create the isotonic regression model
     iso = IsotonicRegression(out_of_bounds='clip')
+    # Learn the relationship between current and next-season output
     iso.fit(fit_rows['output_score'].values, fit_rows['next_output_score'].values)
     return iso
 

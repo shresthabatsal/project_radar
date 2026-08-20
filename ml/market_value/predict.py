@@ -83,11 +83,13 @@ def predict(player_features, prior_mv=None, prior_mv_2=None):
     if bundle is None:
         return _heuristic_fallback(player_features)
 
-    model = bundle['model']
-    cols = bundle.get('feature_cols') or []
-    feat = build_features(player_features, prior_mv=prior_mv, prior_mv_2=prior_mv_2)
+    model = bundle['model'] # Load the trained model
+    cols = bundle.get('feature_cols') or [] # Get the features
+    feat = build_features(player_features, prior_mv=prior_mv, prior_mv_2=prior_mv_2) # Build the input features
     try:
+        # Predict the expected log change in market value
         pred_growth = float(model.predict([[feat.get(c, 0) for c in cols]])[0])
+        # Convert the predicted growth back into an actual market value
         pred = float(prior_mv) * float(np.exp(pred_growth))
     except Exception:
         return _heuristic_fallback(player_features)
